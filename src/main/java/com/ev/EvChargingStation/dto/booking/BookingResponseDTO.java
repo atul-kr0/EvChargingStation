@@ -16,10 +16,13 @@ import java.time.LocalDateTime;
 public class BookingResponseDTO {
 
     private Long bookingId;
+    private String stationName;
+    private Long chargerId;
+    private String chargerNumber;
     private String tokenNumber;
-    private Integer queuePosition;
     private BookingStatus status;
     private LocalDateTime bookedAt;
     private LocalDateTime notifiedAt;
     private LocalDateTime expiresAt;
+    private Integer estimatedChargingDuration;
 }

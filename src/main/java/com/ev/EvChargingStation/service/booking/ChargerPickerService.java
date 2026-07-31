@@ -91,7 +91,7 @@ public class ChargerPickerService {
         }
 
         List<Booking> bookings =
-                bookingRepository.findByChargerAndStatusInOrderByQueuePositionAsc(
+                bookingRepository.findByChargerAndStatusInOrderByBookedAtAsc(
                         charger,
                         List.of(BookingStatus.CHARGING, BookingStatus.WAITING)
                 );
@@ -130,6 +130,31 @@ public class ChargerPickerService {
         return duration != null ? duration : 0;
     }
 
+    public ChargerSelectionResult calculatePrediction(
+            Charger charger,
+            Vehicle vehicle,
+            Integer currentBatteryPercentage,
+            Integer targetBatteryPercentage
+    ) {
+        int waitingTime = calculateWaitingTime(charger);
+
+        int chargingDuration = calculateEstimatedChargingDuration(
+                vehicle,
+                charger,
+                currentBatteryPercentage,
+                targetBatteryPercentage
+        );
+
+        int totalTime = waitingTime + chargingDuration;
+
+        return new ChargerSelectionResult(
+                charger,
+                waitingTime,
+                chargingDuration,
+                totalTime
+        );
+    }
+
     public ChargerSelectionResult pickBestCharger(
             ChargingStation station,
             Vehicle vehicle,
@@ -145,9 +170,6 @@ public class ChargerPickerService {
             throw new IllegalArgumentException("Vehicle cannot be null.");
         }
 
-        // Fetch fresh from the repository — avoids relying on station.getChargers(),
-        // which is LAZY and can throw LazyInitializationException outside the
-        // original session (same trap as user.getVehicles() earlier).
         List<Charger> chargers = chargerRepository.findByChargingStation(station);
 
         ChargerSelectionResult bestResult = null;
@@ -163,23 +185,16 @@ public class ChargerPickerService {
                 continue;
             }
 
-            int waitingTime = calculateWaitingTime(charger);
-
-            int chargingDuration = calculateEstimatedChargingDuration(
-                    vehicle, charger, currentBatteryPercentage, targetBatteryPercentage
+            ChargerSelectionResult prediction = calculatePrediction(
+                    charger,
+                    vehicle,
+                    currentBatteryPercentage,
+                    targetBatteryPercentage
             );
 
-            int totalTime = waitingTime + chargingDuration;   // ← when you'd actually be DONE, not just when you'd start
-
-            if (totalTime < minimumTotalTime) {
-                minimumTotalTime = totalTime;
-
-                bestResult = new ChargerSelectionResult(
-                        charger,
-                        waitingTime,
-                        chargingDuration,
-                        totalTime
-                );
+            if (prediction.getEstimatedCompletionTime() < minimumTotalTime) {
+                minimumTotalTime = prediction.getEstimatedCompletionTime();
+                bestResult = prediction;
             }
         }
 

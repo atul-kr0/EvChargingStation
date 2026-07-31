@@ -1,6 +1,7 @@
 package com.ev.EvChargingStation.dto.charger;
 
 import com.ev.EvChargingStation.entity.Charger;
+import com.ev.EvChargingStation.enums.ChargerStatus;
 import com.ev.EvChargingStation.enums.ConnectorType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -17,4 +18,5 @@ public class ChargerRequestDTO {
     private ConnectorType connectorType;
     private Double outputPower;
     private Long stationId;
+    private ChargerStatus chargerStatus;
 }

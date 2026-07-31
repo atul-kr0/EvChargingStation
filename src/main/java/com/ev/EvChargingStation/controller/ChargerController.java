@@ -38,7 +38,6 @@ public class ChargerController {
 
         return chargerService.updateCharger(chargerId, dto);
     }
-
     @DeleteMapping("/chargers/{chargerId}")
     @PreAuthorize("hasRole('ADMIN')")
     public void deleteCharger(@PathVariable Long chargerId) {

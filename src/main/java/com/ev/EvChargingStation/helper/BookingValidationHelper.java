@@ -1,7 +1,10 @@
 package com.ev.EvChargingStation.helper;
 
+import com.ev.EvChargingStation.entity.Booking;
 import com.ev.EvChargingStation.entity.User;
 import com.ev.EvChargingStation.enums.BookingStatus;
+import com.ev.EvChargingStation.exception.BookingNotCancellableException;
+import com.ev.EvChargingStation.exception.BookingNotFoundException;
 import com.ev.EvChargingStation.repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,4 +33,27 @@ public class BookingValidationHelper {
             );
         }
     }
+
+    public Booking getOwnedBooking(Long bookingId) {
+
+        User user = userHelper.getLoggedInUser();
+
+        return bookingRepository.findByIdAndUser(bookingId, user)
+                .orElseThrow(() ->
+                        new BookingNotFoundException("Booking not found: " + bookingId));
+    }
+
+    public void validateCancellation(Booking booking) {
+
+        BookingStatus status = booking.getStatus();
+
+        if (status != BookingStatus.WAITING &&
+                status != BookingStatus.NOTIFIED) {
+
+            throw new BookingNotCancellableException(
+                    "Booking cannot be cancelled."
+            );
+        }
+    }
+
 }

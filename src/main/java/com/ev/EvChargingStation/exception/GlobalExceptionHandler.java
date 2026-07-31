@@ -68,4 +68,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(StationUnavailableException.class)
+    public ResponseEntity<String> handelStationUnavailableException(StationUnavailableException ex){
+
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(BookingNotCancellableException.class)
+    public ResponseEntity<String> handelBookingNotCancellableException(BookingNotCancellableException ex){
+
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
+
+
 }

@@ -34,6 +34,7 @@ public class BookingServiceImpl implements BookingService{
     private final BookingMapper bookingMapper;
     private final BookingRepository bookingRepository;
     private final BookingValidationHelper bookingValidator;
+    private final NotifyNextService notifyNextService;
 
     @Override
     public BookingResponseDTO bookCharger(BookingRequestDTO request){
@@ -43,6 +44,7 @@ public class BookingServiceImpl implements BookingService{
         bookingValidator.validateNoActiveBooking(vehicle.getUser());
 
         ChargingStation station = stationHelper.getStation(request.getStationId());
+
 
         if (station.getStationStatus() != StationStatus.ACTIVE) {
             throw new StationUnavailableException("This station is currently unavailable.");
@@ -56,7 +58,7 @@ public class BookingServiceImpl implements BookingService{
                         request.getTargetBatteryPercentage()
                 );
 
-        Integer queuePosition = queueHelper.calculateQueuePosition(selection.getCharger());
+//        Integer queuePosition = queueHelper.calculateQueuePosition(selection.getCharger());
 
         String token = tokenService.generateUniqueToken();
 
@@ -67,16 +69,19 @@ public class BookingServiceImpl implements BookingService{
         booking.setChargingStation(station);
         booking.setCharger(selection.getCharger());
 
-        booking.setQueuePosition(queuePosition);
+//        booking.setQueuePosition(queuePosition);
         booking.setTokenNumber(token);
 
-        booking.setEstimatedChargingDuration(selection.getEstimatedChargingDuration()
-        );
+        booking.setEstimatedChargingDuration(selection.getEstimatedChargingDuration());
 
         booking.setStatus(BookingStatus.WAITING);
         booking.setBookedAt(LocalDateTime.now());
 
         booking = bookingRepository.save(booking);
+
+        Long stationId = booking.getChargingStation().getId();
+
+        notifyNextService.notifyEligibleBookings(stationId);
 
         return bookingMapper.entityToDto(booking);
     }

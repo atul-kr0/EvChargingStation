@@ -39,7 +39,7 @@ public class Booking {
     @Enumerated(EnumType.STRING)
     private BookingStatus status;
 
-    private Integer queuePosition;
+//    private Integer queuePosition;
 
     private LocalDateTime bookedAt;
 
@@ -69,9 +69,14 @@ public class Booking {
     @OneToMany(
             mappedBy = "booking",
             fetch = FetchType.LAZY
-    )    private List<Notification> notifications = new ArrayList<>();
+    )
+    private List<Notification> notifications = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "charger_id", nullable = false)
     private Charger charger;
+
+    private Integer currentBatteryPercentage;
+
+    private Integer targetBatteryPercentage;
 }

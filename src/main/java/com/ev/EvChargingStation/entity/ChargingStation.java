@@ -44,7 +44,7 @@ public class ChargingStation {
     private List<Charger> chargers = new ArrayList<>();
 
     @OneToMany(
-            mappedBy = "station",
+            mappedBy = "chargingStation",
             fetch = FetchType.LAZY
     )    private List<Booking> bookings = new ArrayList<>();
 }
