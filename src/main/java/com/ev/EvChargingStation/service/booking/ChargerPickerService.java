@@ -1,4 +1,5 @@
 package com.ev.EvChargingStation.service.booking;
+
 import com.ev.EvChargingStation.dto.booking.ChargerSelectionResult;
 import com.ev.EvChargingStation.entity.Booking;
 import com.ev.EvChargingStation.entity.Charger;
@@ -16,14 +17,65 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Transactional(readOnly = true)
 @Service
+@Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class ChargerPickerService {
 
     private final BookingRepository bookingRepository;
     private final ChargerRepository chargerRepository;
 
+    /**
+     * Calculates estimated energy required (kWh).
+     */
+    public double calculateEstimatedEnergyRequired(
+            Vehicle vehicle,
+            Integer currentBatteryPercentage,
+            Integer targetBatteryPercentage
+    ) {
+
+        if (vehicle == null) {
+            throw new IllegalArgumentException("Vehicle cannot be null.");
+        }
+
+        if (currentBatteryPercentage == null || targetBatteryPercentage == null) {
+            throw new IllegalArgumentException("Battery percentages cannot be null.");
+        }
+
+        if (currentBatteryPercentage < 0 || currentBatteryPercentage > 100) {
+            throw new IllegalArgumentException(
+                    "Current battery percentage must be between 0 and 100."
+            );
+        }
+
+        if (targetBatteryPercentage < 0 || targetBatteryPercentage > 100) {
+            throw new IllegalArgumentException(
+                    "Target battery percentage must be between 0 and 100."
+            );
+        }
+
+        if (currentBatteryPercentage >= targetBatteryPercentage) {
+            throw new IllegalArgumentException(
+                    "Target battery percentage must be greater than current battery percentage."
+            );
+        }
+
+        if (vehicle.getBatteryCapacity() == null
+                || vehicle.getBatteryCapacity() <= 0) {
+
+            throw new IllegalArgumentException(
+                    "Invalid vehicle battery capacity."
+            );
+        }
+
+        return vehicle.getBatteryCapacity()
+                * (targetBatteryPercentage - currentBatteryPercentage)
+                / 100.0;
+    }
+
+    /**
+     * Calculates estimated charging duration (minutes).
+     */
     public Integer calculateEstimatedChargingDuration(
             Vehicle vehicle,
             Charger charger,
@@ -39,52 +91,41 @@ public class ChargerPickerService {
             throw new IllegalArgumentException("Charger cannot be null.");
         }
 
-        if (currentBatteryPercentage == null || targetBatteryPercentage == null) {
-            throw new IllegalArgumentException("Battery percentages cannot be null.");
-        }
-
-        if (currentBatteryPercentage < 0 || currentBatteryPercentage > 100) {
-            throw new IllegalArgumentException("Current battery percentage must be between 0 and 100.");
-        }
-
-        if (targetBatteryPercentage < 0 || targetBatteryPercentage > 100) {
-            throw new IllegalArgumentException("Target battery percentage must be between 0 and 100.");
-        }
-
-        if (currentBatteryPercentage >= targetBatteryPercentage) {
-            throw new IllegalArgumentException(
-                    "Target battery percentage must be greater than current battery percentage.");
-        }
-
-        if (vehicle.getBatteryCapacity() == null || vehicle.getBatteryCapacity() <= 0) {
-            throw new IllegalArgumentException("Invalid vehicle battery capacity.");
-        }
-
         if (charger.getOutputPower() == null || charger.getOutputPower() <= 0) {
-            throw new IllegalArgumentException("Invalid charger output power.");
+            throw new IllegalArgumentException(
+                    "Invalid charger output power."
+            );
         }
 
-        // The real charging speed is capped by whichever is SLOWER — the charger's
-        // max output, or the vehicle's max acceptance rate. A fast charger can't
-        // force a slow car to charge faster than its own hardware allows.
         double effectivePower = charger.getOutputPower();
 
-        if (vehicle.getMaxChargingPower() != null && vehicle.getMaxChargingPower() > 0) {
-            effectivePower = Math.min(effectivePower, vehicle.getMaxChargingPower());
+        if (vehicle.getMaxChargingPower() != null
+                && vehicle.getMaxChargingPower() > 0) {
+
+            effectivePower = Math.min(
+                    effectivePower,
+                    vehicle.getMaxChargingPower()
+            );
         }
 
-        double energyNeeded =
-                vehicle.getBatteryCapacity()
-                        * (targetBatteryPercentage - currentBatteryPercentage)
-                        / 100.0;
+        double energyNeeded = calculateEstimatedEnergyRequired(
+                vehicle,
+                currentBatteryPercentage,
+                targetBatteryPercentage
+        );
 
-        double chargingHours =
-                energyNeeded / effectivePower;   // ← uses the capped value, not raw charger power
+        double chargingHours = energyNeeded / effectivePower;
 
         return (int) Math.ceil(chargingHours * 60);
     }
 
-    public Integer calculateWaitingTime(Charger charger) {
+    /**
+     * Waiting time excluding a booking (used by ReBalanceStation).
+     */
+    public Integer calculateWaitingTime(
+            Charger charger,
+            Long excludedBookingId
+    ) {
 
         if (charger == null) {
             throw new IllegalArgumentException("Charger cannot be null.");
@@ -93,68 +134,126 @@ public class ChargerPickerService {
         List<Booking> bookings =
                 bookingRepository.findByChargerAndStatusInOrderByBookedAtAsc(
                         charger,
-                        List.of(BookingStatus.CHARGING, BookingStatus.WAITING)
+                        List.of(
+                                BookingStatus.CHARGING,
+                                BookingStatus.NOTIFIED,
+                                BookingStatus.WAITING
+                        )
                 );
 
         int waitingTime = 0;
 
         for (Booking booking : bookings) {
+
+            if (excludedBookingId != null
+                    && excludedBookingId.equals(booking.getId())) {
+                continue;
+            }
+
             if (booking.getStatus() == BookingStatus.CHARGING) {
                 waitingTime += getRemainingChargingTime(booking);
             } else {
-                waitingTime += getSafeDuration(booking.getEstimatedChargingDuration());
+                waitingTime += getSafeDuration(
+                        booking.getEstimatedChargingDuration()
+                );
             }
         }
 
         return waitingTime;
     }
 
+    /**
+     * Normal waiting time.
+     */
+    public Integer calculateWaitingTime(Charger charger) {
+        return calculateWaitingTime(charger, null);
+    }
+
     private int getRemainingChargingTime(Booking booking) {
 
-        int estimated = getSafeDuration(booking.getEstimatedChargingDuration());
+        int estimated = getSafeDuration(
+                booking.getEstimatedChargingDuration()
+        );
 
-        // If we don't know when they checked in, we can't compute elapsed time —
-        // safest assumption is that none of their session has passed yet,
-        // rather than silently contributing zero.
         if (booking.getCheckedInAt() == null) {
             return estimated;
         }
 
-        long elapsedMinutes = Duration.between(booking.getCheckedInAt(), LocalDateTime.now()).toMinutes();
-        int remaining = estimated - (int) elapsedMinutes;
+        long elapsedMinutes =
+                Duration.between(
+                        booking.getCheckedInAt(),
+                        LocalDateTime.now()
+                ).toMinutes();
 
-        return Math.max(remaining, 0);
+        return Math.max(estimated - (int) elapsedMinutes, 0);
     }
 
     private int getSafeDuration(Integer duration) {
-        return duration != null ? duration : 0;
+
+        if (duration == null) {
+            throw new IllegalStateException(
+                    "Estimated charging duration is missing."
+            );
+        }
+
+        return duration;
     }
 
+    /**
+     * Used by BookingService.
+     */
     public ChargerSelectionResult calculatePrediction(
             Charger charger,
             Vehicle vehicle,
             Integer currentBatteryPercentage,
             Integer targetBatteryPercentage
     ) {
-        int waitingTime = calculateWaitingTime(charger);
 
-        int chargingDuration = calculateEstimatedChargingDuration(
-                vehicle,
+        return calculatePrediction(
                 charger,
+                vehicle,
                 currentBatteryPercentage,
-                targetBatteryPercentage
+                targetBatteryPercentage,
+                null
         );
+    }
 
-        int totalTime = waitingTime + chargingDuration;
+    /**
+     * Used by ReBalanceStation.
+     */
+    public ChargerSelectionResult calculatePrediction(
+            Charger charger,
+            Vehicle vehicle,
+            Integer currentBatteryPercentage,
+            Integer targetBatteryPercentage,
+            Long excludedBookingId
+    ) {
+
+        int waitingTime =
+                calculateWaitingTime(
+                        charger,
+                        excludedBookingId
+                );
+
+        int chargingDuration =
+                calculateEstimatedChargingDuration(
+                        vehicle,
+                        charger,
+                        currentBatteryPercentage,
+                        targetBatteryPercentage
+                );
 
         return new ChargerSelectionResult(
                 charger,
                 waitingTime,
                 chargingDuration,
-                totalTime
+                waitingTime + chargingDuration
         );
     }
 
+    /**
+     * Finds the best compatible charger.
+     */
     public ChargerSelectionResult pickBestCharger(
             ChargingStation station,
             Vehicle vehicle,
@@ -170,7 +269,8 @@ public class ChargerPickerService {
             throw new IllegalArgumentException("Vehicle cannot be null.");
         }
 
-        List<Charger> chargers = chargerRepository.findByChargingStation(station);
+        List<Charger> chargers =
+                chargerRepository.findByChargingStation(station);
 
         ChargerSelectionResult bestResult = null;
         int minimumTotalTime = Integer.MAX_VALUE;
@@ -185,14 +285,16 @@ public class ChargerPickerService {
                 continue;
             }
 
-            ChargerSelectionResult prediction = calculatePrediction(
-                    charger,
-                    vehicle,
-                    currentBatteryPercentage,
-                    targetBatteryPercentage
-            );
+            ChargerSelectionResult prediction =
+                    calculatePrediction(
+                            charger,
+                            vehicle,
+                            currentBatteryPercentage,
+                            targetBatteryPercentage
+                    );
 
             if (prediction.getEstimatedCompletionTime() < minimumTotalTime) {
+
                 minimumTotalTime = prediction.getEstimatedCompletionTime();
                 bestResult = prediction;
             }
@@ -205,4 +307,3 @@ public class ChargerPickerService {
         return bestResult;
     }
 }
-

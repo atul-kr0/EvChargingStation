@@ -10,7 +10,7 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table
+@Table(name = "charging_sessions")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,30 +22,60 @@ public class ChargingSession {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "booking_id", nullable = false)
+    @JoinColumn(name = "booking_id", nullable = false, unique = true)
     private Booking booking;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "charger_id", nullable = false)
     private Charger charger;
 
-    // ---- Estimation (used before/during charging to predict duration) ----
-    private Double currentBattery;   // % at start
-    private Double targetBattery;    // % user wants to reach
-    private Double energyRequired;   // kWh needed to go from current -> target
+    // ---------------- Battery Details ----------------
 
-    // ---- Actual session lifecycle ----
+    private Double initialBatteryPercentage;
+
+    private Double targetBatteryPercentage;
+
+    private Double estimatedEnergyRequired;
+
+    // ---------------- Session Lifecycle ----------------
+
     private LocalDateTime startTime;
+
+    private LocalDateTime plannedEndTime;
+
+    private Integer actualChargingDuration;
+
     private LocalDateTime endTime;
-    private LocalDateTime plannedEndTime;   // estimated finish, based on energyRequired
-    private boolean endedEarly;
 
-    // ---- Billing (simulated, since there's no real IoT meter) ----
-    private Double energyDelivered;   // simulated = actualMinutes * charger.outputPower / 60
+    private Boolean endedEarly = false;
+
+    // ---------------- Billing ----------------
+
+    /**
+     * Tariff at the time the charging session started.
+     * Stored to preserve historical pricing.
+     */
     private Double pricePerKwh;
-    private Double penaltyAmount;
-    private Double totalAmount;
 
+    /**
+     * Actual energy delivered during the session.
+     */
+    private Double energyDelivered = 0.0;
+
+    /**
+     * Charging cost excluding penalties.
+     */
+    private Double chargingAmount = 0.0;
+
+    /**
+     * Penalty for early termination.
+     */
+    private Double penaltyAmount = 0.0;
+
+    /**
+     * Final payable amount.
+     */
+    private Double totalAmount = 0.0;
 
     @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus;

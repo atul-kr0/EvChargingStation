@@ -45,7 +45,8 @@ public class ReBalanceStation {
                         booking.getCharger(),
                         booking.getVehicle(),
                         booking.getCurrentBatteryPercentage(),
-                        booking.getTargetBatteryPercentage()
+                        booking.getTargetBatteryPercentage(),
+                        booking.getId() // Exclude itself
                 );
 
         ChargerSelectionResult bestPrediction =
@@ -64,6 +65,7 @@ public class ReBalanceStation {
         if (isWorthReassigning(currentPrediction, bestPrediction)) {
 
             booking.setCharger(bestPrediction.getCharger());
+
             booking.setEstimatedChargingDuration(
                     bestPrediction.getEstimatedChargingDuration()
             );

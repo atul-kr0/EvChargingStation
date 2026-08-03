@@ -80,5 +80,12 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(BookingStatusInvalidException.class)
+    public ResponseEntity<String> handleBookingStatusInvalidException(
+            BookingStatusInvalidException ex) {
 
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ex.getMessage());
+    }
 }

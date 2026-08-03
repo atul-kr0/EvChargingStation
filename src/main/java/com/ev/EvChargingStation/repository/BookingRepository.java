@@ -6,6 +6,7 @@ import com.ev.EvChargingStation.entity.User;
 import com.ev.EvChargingStation.enums.BookingStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -48,5 +49,17 @@ public interface BookingRepository extends JpaRepository<Booking,Long> {
     Optional<Booking> findFirstByChargerIdAndStatusInOrderByBookedAtAsc(
             Long chargerId,
             List<BookingStatus> statuses
+    );
+
+    Optional<Booking> findByTokenNumber(String token);
+
+    List<Booking> findByStatusAndNotifiedAtBefore(
+            BookingStatus status,
+            LocalDateTime notifiedAt
+    );
+
+    Optional<Booking> findByUserAndStatus(
+            User user,
+            BookingStatus status
     );
 }
