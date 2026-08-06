@@ -69,13 +69,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(StationUnavailableException.class)
-    public ResponseEntity<String> handelStationUnavailableException(StationUnavailableException ex){
+    public ResponseEntity<String> handleStationUnavailableException(StationUnavailableException ex){
 
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler(BookingNotCancellableException.class)
-    public ResponseEntity<String> handelBookingNotCancellableException(BookingNotCancellableException ex){
+    public ResponseEntity<String> handleBookingNotCancellableException(BookingNotCancellableException ex){
 
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
@@ -86,6 +86,24 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidCoordinatesException.class)
+    public ResponseEntity<String> handleInvalidCoordinatesException(
+            InvalidCoordinatesException ex) {
+
+        return ResponseEntity
+                .badRequest()
+                .body(ex.getMessage());
+    }
+
+    @ExceptionHandler(RouteServiceException.class)
+    public ResponseEntity<String> handleRouteServiceException(
+            RouteServiceException ex) {
+
+        return ResponseEntity
+                .badRequest()
                 .body(ex.getMessage());
     }
 }

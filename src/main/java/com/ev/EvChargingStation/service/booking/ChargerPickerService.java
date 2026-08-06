@@ -7,6 +7,7 @@ import com.ev.EvChargingStation.entity.ChargingStation;
 import com.ev.EvChargingStation.entity.Vehicle;
 import com.ev.EvChargingStation.enums.BookingStatus;
 import com.ev.EvChargingStation.enums.ChargerStatus;
+import com.ev.EvChargingStation.exception.NoCompatibleChargerException;
 import com.ev.EvChargingStation.repository.BookingRepository;
 import com.ev.EvChargingStation.repository.ChargerRepository;
 import lombok.RequiredArgsConstructor;
@@ -252,9 +253,10 @@ public class ChargerPickerService {
     }
 
     /**
-     * Finds the best compatible charger.
+     * Picks the compatible operational charger that results in the earliest
+     * estimated completion time.
      */
-    public ChargerSelectionResult pickBestCharger(
+    public ChargerSelectionResult pickFastestCompletionCharger(
             ChargingStation station,
             Vehicle vehicle,
             Integer currentBatteryPercentage,
@@ -272,15 +274,16 @@ public class ChargerPickerService {
         List<Charger> chargers =
                 chargerRepository.findByChargingStation(station);
 
-        ChargerSelectionResult bestResult = null;
-        int minimumTotalTime = Integer.MAX_VALUE;
+        ChargerSelectionResult bestPrediction = null;
 
         for (Charger charger : chargers) {
 
-            if (charger.getChargerStatus() != ChargerStatus.AVAILABLE) {
+            // Ignore chargers that are unavailable for use.
+            if (charger.getChargerStatus() == ChargerStatus.OUT_OF_SERVICE) {
                 continue;
             }
 
+            // Skip incompatible chargers.
             if (charger.getConnectorType() != vehicle.getConnectorType()) {
                 continue;
             }
@@ -293,17 +296,21 @@ public class ChargerPickerService {
                             targetBatteryPercentage
                     );
 
-            if (prediction.getEstimatedCompletionTime() < minimumTotalTime) {
+            if (bestPrediction == null
+                    || prediction.getEstimatedCompletionTime()
+                    < bestPrediction.getEstimatedCompletionTime()) {
 
-                minimumTotalTime = prediction.getEstimatedCompletionTime();
-                bestResult = prediction;
+                bestPrediction = prediction;
             }
         }
 
-        if (bestResult == null) {
-            throw new IllegalStateException("No compatible charger found.");
+        if (bestPrediction == null) {
+            throw new NoCompatibleChargerException(
+                    "No compatible operational charger found."
+            );
         }
 
-        return bestResult;
+        return bestPrediction;
     }
+
 }

@@ -1,6 +1,5 @@
 package com.ev.EvChargingStation.dto.vehicle;
 
-import com.ev.EvChargingStation.enums.ChargingType;
 import com.ev.EvChargingStation.enums.ConnectorType;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -18,6 +17,5 @@ public class VehicleRequestDTO {
     private String registrationNumber;
     private Double batteryCapacity;
     private ConnectorType connectorType;
-    private ChargingType chargingType;
     private Double maxChargingPower;
 }

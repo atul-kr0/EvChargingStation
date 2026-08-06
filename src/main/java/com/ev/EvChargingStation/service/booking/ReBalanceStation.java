@@ -50,7 +50,7 @@ public class ReBalanceStation {
                 );
 
         ChargerSelectionResult bestPrediction =
-                chargerPickerService.pickBestCharger(
+                chargerPickerService.pickFastestCompletionCharger(
                         booking.getChargingStation(),
                         booking.getVehicle(),
                         booking.getCurrentBatteryPercentage(),

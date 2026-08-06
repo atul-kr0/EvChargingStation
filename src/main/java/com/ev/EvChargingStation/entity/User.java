@@ -1,5 +1,7 @@
 package com.ev.EvChargingStation.entity;
 
+import com.ev.EvChargingStation.enums.RecommendationPriority;
+import com.ev.EvChargingStation.enums.RecommendationType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -69,5 +71,17 @@ public class User implements UserDetails {
     public String getUsername() {
         return email;
     }
+
+    @Enumerated(EnumType.STRING)
+    private RecommendationType defaultRecommendationType;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "user_recommendation_priorities",
+            joinColumns = @JoinColumn(name = "user_id")
+    )
+    @Enumerated(EnumType.STRING)
+    @Column(name = "priority")
+    private List<RecommendationPriority> defaultPriorities;
 
 }

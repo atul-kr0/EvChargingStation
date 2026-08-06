@@ -51,7 +51,7 @@ public class BookingServiceImpl implements BookingService{
         }
 
         ChargerSelectionResult selection = chargerPickerService
-                .pickBestCharger(
+                .pickFastestCompletionCharger(
                         station,
                         vehicle,
                         request.getCurrentBatteryPercentage(),

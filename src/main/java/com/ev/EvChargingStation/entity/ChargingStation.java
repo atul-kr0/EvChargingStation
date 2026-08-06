@@ -47,4 +47,7 @@ public class ChargingStation {
             mappedBy = "chargingStation",
             fetch = FetchType.LAZY
     )    private List<Booking> bookings = new ArrayList<>();
+
+    @Column(unique = true)
+    private Long openChargeMapId;
 }

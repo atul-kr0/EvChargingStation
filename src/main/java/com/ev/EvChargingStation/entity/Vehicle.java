@@ -1,6 +1,5 @@
 package com.ev.EvChargingStation.entity;
 
-import com.ev.EvChargingStation.enums.ChargingType;
 import com.ev.EvChargingStation.enums.ConnectorType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -8,7 +7,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,9 +33,6 @@ public class Vehicle {
 
     @Enumerated(EnumType.STRING)
     private ConnectorType connectorType;
-
-    @Enumerated(EnumType.STRING)
-    private ChargingType chargingType;
 
     private Double maxChargingPower; // kW
 
